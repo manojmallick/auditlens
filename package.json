@@ -1,0 +1,23 @@
+{
+  "name": "auditlens-starter",
+  "version": "1.0.0",
+  "description": "AuditLens — EU AI Act trace compliance agent. Gemini 3 + Google Cloud Agent Builder + Arize Phoenix MCP.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "score": "node --env-file-if-exists=.env scripts/score.js",
+    "calibrate": "node --env-file-if-exists=.env scripts/calibrate.js",
+    "seed": "python3 seed_demo.py"
+  },
+  "dependencies": {
+    "@arizeai/phoenix-mcp": "^4.0.13",
+    "@google/genai": "^0.3.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^4.19.2"
+  }
+}

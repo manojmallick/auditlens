@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8" />
+<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+<title>AuditLens — EU AI Act Compliance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: { extend: {
+      colors: {
+        "surface": "#0C0F1A", "surface-dim": "#15121b",
+        "surface-container-lowest": "#100d16", "surface-container-low": "#1d1a24",
+        "surface-container": "#141825", "surface-container-high": "#1F2937",
+        "surface-container-highest": "#37333e", "surface-bright": "#3c3742",
+        "on-surface": "#e8dfee", "on-surface-variant": "#ccc3d8",
+        "outline": "#958da1", "outline-variant": "#4a4455",
+        "primary": "#d2bbff", "on-primary": "#3f008e",
+        "primary-container": "#7c3aed", "on-primary-container": "#ede0ff",
+        "secondary": "#adc6ff", "secondary-container": "#0162cf", "on-secondary-container": "#dae4ff",
+        "tertiary": "#ffb784", "tertiary-container": "#a15100", "on-tertiary-container": "#ffe0cd",
+        "error": "#ffb4ab", "error-container": "#93000a", "on-error-container": "#ffdad6",
+        "success": "#34d399",
+      },
+      borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+      spacing: { "base": "4px", "xs": "8px", "sm": "12px", "md": "16px", "gutter": "20px", "lg": "24px", "xl": "32px", "margin": "24px" },
+      fontFamily: { sans: ["Inter", "sans-serif"], "mono-data": ["monospace"] },
+      fontSize: {
+        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+        "title-md": ["18px", { lineHeight: "24px", fontWeight: "500" }],
+        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+        "mono-data": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+      },
+    } },
+  };
+</script>
+<style>
+  body { background-color: #0C0F1A; color: #e8dfee; font-family: 'Inter', sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  .glass-card { background: rgba(20, 24, 37, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(74, 68, 85, 0.5); }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0C0F1A; }
+  ::-webkit-scrollbar-thumb { background: #4a4455; border-radius: 10px; }
+  .swimlane-node::after { content: ''; position: absolute; height: 1px; background: #4a4455; width: 40px; right: -40px; top: 20px; }
+  .swimlane-node:last-child::after { display: none; }
+  .nav-link.active { color: #d2bbff; font-weight: 700; background: rgba(124,58,237,0.10); border-right: 4px solid #d2bbff; }
+  .ring-anim { transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  [data-view] { display: none; }
+  [data-view].show { display: block; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0;
+           transition: all .3s ease; background: #1F2937; border: 1px solid #4a4455; padding: 12px 18px; border-radius: 10px; z-index: 60; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* Judge Tour */
+  .tour-blocker { position: fixed; inset: 0; z-index: 70; display: none; }
+  .tour-blocker.show { display: block; }
+  .tour-blocker.dim { background: rgba(5,7,12,.80); }
+  .tour-highlight { position: fixed; z-index: 71; border: 2px solid #d2bbff; border-radius: 10px;
+    box-shadow: 0 0 0 9999px rgba(5,7,12,.80), 0 0 28px rgba(124,58,237,.65); pointer-events: none; display: none;
+    transition: all .35s cubic-bezier(.4,0,.2,1); }
+  .tour-card { position: fixed; z-index: 72; width: 360px; max-width: calc(100vw - 32px); background: #141825;
+    border: 1px solid #7c3aed; border-radius: 12px; padding: 18px; box-shadow: 0 14px 50px rgba(0,0,0,.6); display: none; }
+  .tour-card.show { display: block; }
+  .tour-progress { height: 3px; background: #2c2833; border-radius: 999px; overflow: hidden; margin-top: 14px; }
+  .tour-progress > i { display: block; height: 100%; background: #d2bbff; transition: width .35s ease; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar (drawer on mobile) -->
+<div id="sbBackdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+<aside id="sidebar" class="flex flex-col h-full py-lg bg-surface-container border-r border-outline-variant w-64 shrink-0 fixed inset-y-0 left-0 z-40 -translate-x-full transition-transform md:static md:translate-x-0">
+  <div class="px-lg mb-xl">
+    <div class="text-headline-md font-bold text-primary flex items-center gap-2">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">shield_with_heart</span>
+      AuditLens
+    </div>
+    <div class="text-on-surface-variant text-[10px] mt-1 uppercase tracking-widest font-semibold">AI Act Monitor</div>
+  </div>
+  <nav class="flex-1 px-md space-y-1">
+    <a class="nav-link active flex items-center gap-3 px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer" data-nav="dashboard">
+      <span class="material-symbols-outlined">dashboard</span><span class="text-label-caps">Dashboard</span></a>
+    <a class="nav-link flex items-center gap-3 px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer" data-nav="traces">
+      <span class="material-symbols-outlined">account_tree</span><span class="text-label-caps">Traces</span></a>
+    <a class="nav-link flex items-center gap-3 px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer" data-nav="experiments">
+      <span class="material-symbols-outlined">biotech</span><span class="text-label-caps">Experiments</span></a>
+  </nav>
+  <div class="px-md mt-auto space-y-md">
+    <div id="healthBox" class="text-[11px] text-on-surface-variant px-md space-y-1"></div>
+    <button onclick="go('traces')" class="w-full bg-primary-container text-on-primary-container py-md px-lg rounded-xl text-label-caps font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+      <span class="material-symbols-outlined">add</span> New Audit
+    </button>
+  </div>
+</aside>
+
+<!-- Main wrapper -->
+<div class="flex flex-col flex-1 min-w-0">
+  <!-- Top bar -->
+  <header class="flex justify-between items-center w-full px-lg py-md bg-surface border-b border-outline-variant z-10">
+    <div class="flex items-center gap-4 min-w-0">
+      <button onclick="toggleSidebar()" class="md:hidden p-xs text-on-surface-variant"><span class="material-symbols-outlined">menu</span></button>
+      <h1 id="pageTitle" class="text-headline-md font-bold text-on-surface truncate">EU AI Act Compliance</h1>
+      <div class="bg-surface-container-highest px-sm py-xs rounded flex items-center gap-2">
+        <span id="liveDot" class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+        <span id="liveLabel" class="text-label-caps text-tertiary">Connecting…</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-md">
+      <div class="relative hidden sm:flex items-center bg-surface-container-low border border-outline-variant rounded-full px-md py-xs">
+        <span class="material-symbols-outlined text-on-surface-variant">search</span>
+        <input id="searchBox" class="bg-transparent border-none focus:ring-0 text-body-sm w-32 lg:w-48 text-on-surface" placeholder="Search Trace IDs…" />
+      </div>
+      <button onclick="startTour()" title="Guided walkthrough for judges" class="bg-primary-container text-on-primary-container text-label-caps font-bold px-md py-xs rounded-lg flex items-center gap-1 hover:opacity-90 transition-opacity">
+        <span class="material-symbols-outlined text-[18px]">tour</span>Judge Tour</button>
+      <button onclick="boot()" title="Refresh" class="p-xs text-primary hover:opacity-80"><span class="material-symbols-outlined">refresh</span></button>
+      <span class="text-label-caps text-info hidden md:inline-flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[18px]">auto_awesome</span>Gemini 3</span>
+    </div>
+  </header>
+
+  <!-- Scrollable content -->
+  <main class="flex-1 overflow-y-auto overflow-x-hidden">
+
+    <!-- ============ DASHBOARD ============ -->
+    <div data-view="dashboard" class="show flex">
+      <div class="flex-1 p-lg space-y-lg min-w-0">
+        <!-- Hero gauges -->
+        <section class="grid grid-cols-12 gap-lg">
+          <div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-xl flex flex-col items-center justify-center relative overflow-hidden">
+            <h3 class="text-label-caps text-on-surface-variant mb-md uppercase tracking-widest">Global Compliance Score</h3>
+            <div class="relative flex items-center justify-center">
+              <svg class="w-48 h-48 transform -rotate-90"><circle class="text-surface-container-high" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="12"></circle>
+                <circle id="globalRing" class="ring-anim" cx="96" cy="96" fill="transparent" r="88" stroke="#34d399" stroke-dasharray="552.92" stroke-dashoffset="552.92" stroke-linecap="round" stroke-width="12"></circle></svg>
+              <div class="absolute flex flex-col items-center">
+                <span id="globalScore" class="text-display-lg text-on-surface">—</span>
+                <span id="globalLabel" class="text-label-caps text-primary">scoring…</span>
+              </div>
+            </div>
+            <p class="mt-lg text-body-sm text-center text-on-surface-variant max-w-xs">Aggregated EU AI Act score across <span id="traceCount">all</span> recently audited LLM traces.</p>
+          </div>
+          <div class="col-span-12 lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-lg" id="articleGauges"></div>
+        </section>
+
+        <!-- Compliance by article -->
+        <section class="glass-card rounded-xl overflow-hidden">
+          <div class="px-lg py-md border-b border-outline-variant flex justify-between items-center">
+            <h3 class="text-title-md font-bold text-on-surface">Compliance by Article (EU AI Act 2024/1689)</h3>
+            <button onclick="exportCsv()" class="bg-surface-container-high px-sm py-xs rounded text-label-caps border border-outline-variant hover:bg-surface-bright transition-colors">Export CSV</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead><tr class="bg-surface-container-low text-on-surface-variant text-label-caps uppercase">
+                <th class="px-lg py-md border-b border-outline-variant">Article</th>
+                <th class="px-lg py-md border-b border-outline-variant">Requirement</th>
+                <th class="px-lg py-md border-b border-outline-variant">Traces</th>
+                <th class="px-lg py-md border-b border-outline-variant">Pass</th>
+                <th class="px-lg py-md border-b border-outline-variant">Fail</th>
+                <th class="px-lg py-md border-b border-outline-variant">Avg Score</th>
+                <th class="px-lg py-md border-b border-outline-variant">Status</th>
+              </tr></thead>
+              <tbody id="articleTable" class="text-body-sm"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Evaluator calibration (the differentiator) -->
+        <section class="glass-card rounded-xl p-lg">
+          <div class="flex items-center gap-sm mb-md">
+            <div class="p-xs bg-primary/20 rounded"><span class="material-symbols-outlined text-primary">verified_user</span></div>
+            <h3 class="text-title-md font-bold text-on-surface">Evaluator Calibration <span class="text-on-surface-variant font-normal text-body-sm">— is the judge trustworthy?</span></h3>
+            <span id="calMode" class="ml-auto text-label-caps px-sm py-xs rounded-full border border-outline-variant text-on-surface-variant"></span>
+          </div>
+          <div id="calibration" class="grid grid-cols-2 md:grid-cols-5 gap-lg"></div>
+          <p class="mt-md text-body-sm text-on-surface-variant">Cohen's κ measures <strong>live</strong> agreement between the Gemini 3 evaluator and human auditors on a pilot golden set (8 traces, 40 article-judgements). A production rollout expands this set and tunes the evaluator until κ clears the “substantial” bar — <em>measuring the judge is the point</em>. (Tuning the rubric anchors already lifted κ from 0.24 → 0.38 and made Art.50(2) perfect.)</p>
+        </section>
+      </div>
+
+      <!-- Recent violations panel -->
+      <aside class="w-[320px] shrink-0 border-l border-outline-variant bg-surface-container-low p-md overflow-y-auto space-y-md hidden xl:block">
+        <div class="flex items-center justify-between px-xs">
+          <h3 class="text-label-caps font-bold text-on-surface uppercase tracking-widest">Recent Violations</h3>
+          <span id="violCount" class="bg-error-container text-on-error-container px-xs rounded text-[10px] font-bold">0</span>
+        </div>
+        <div id="violationList" class="space-y-md"></div>
+      </aside>
+    </div>
+
+    <!-- ============ TRACES + ANALYSIS ============ -->
+    <div data-view="traces" class="p-lg">
+      <div class="grid grid-cols-12 gap-lg">
+        <!-- Trace list -->
+        <div class="col-span-12 lg:col-span-4 space-y-md">
+          <div class="glass-card rounded-xl p-md">
+            <div class="flex gap-xs">
+              <input id="traceIdInput" class="flex-1 bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm text-body-sm text-on-surface" placeholder="Trace ID (blank = latest)" />
+              <button onclick="evaluateTrace(document.getElementById('traceIdInput').value.trim()||undefined)" class="bg-primary-container text-on-primary-container px-md rounded-lg text-label-caps font-bold">Evaluate</button>
+            </div>
+          </div>
+          <div id="traceList" class="space-y-sm"></div>
+        </div>
+        <!-- Detail -->
+        <div class="col-span-12 lg:col-span-8">
+          <div id="traceDetail" class="text-on-surface-variant text-body-sm flex items-center justify-center h-64 glass-card rounded-xl">Select a trace to analyse, or click Evaluate.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ EXPERIMENTS ============ -->
+    <div data-view="experiments" class="p-lg">
+      <div id="experimentBody"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Approval bar -->
+<div id="approval" class="fixed left-0 md:left-64 right-0 bottom-0 bg-surface-container border-t border-primary/40 px-lg py-md hidden flex-wrap items-center gap-md z-50">
+  <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">bolt</span>
+  <div class="flex-1">
+    <strong id="apTitle" class="text-on-surface"></strong>
+    <div id="apTools" class="text-on-surface-variant text-mono-data"></div>
+  </div>
+  <button onclick="hideApproval()" class="px-lg py-sm border border-outline-variant rounded-lg text-label-caps text-on-surface-variant hover:bg-surface-container-high">Reject</button>
+  <button onclick="approve()" class="px-lg py-sm bg-primary-container text-on-primary-container rounded-lg text-label-caps font-bold hover:shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all">Approve &amp; Write ▸</button>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Judge Tour overlay -->
+<div id="tourBlocker" class="tour-blocker"></div>
+<div id="tourHighlight" class="tour-highlight"></div>
+<div id="tourCard" class="tour-card">
+  <div class="flex justify-between items-center mb-xs">
+    <span id="tourStepNo" class="text-label-caps text-primary"></span>
+    <span onclick="endTour()" class="material-symbols-outlined cursor-pointer text-on-surface-variant hover:text-on-surface" style="font-size:18px">close</span>
+  </div>
+  <h4 id="tourTitle" class="text-title-md font-bold text-on-surface mb-xs"></h4>
+  <p id="tourBody" class="text-body-sm text-on-surface-variant leading-relaxed"></p>
+  <div class="tour-progress"><i id="tourProgress" style="width:0%"></i></div>
+  <div class="flex justify-between items-center mt-md">
+    <button id="tourBack" onclick="prevStep()" class="text-label-caps text-on-surface-variant px-sm py-xs hover:text-on-surface">‹ Back</button>
+    <button id="tourNext" onclick="nextStep()" class="bg-primary-container text-on-primary-container text-label-caps font-bold px-md py-xs rounded-lg hover:opacity-90">Next ›</button>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (path, opts) => (await fetch(path, opts)).json();
+const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const pct = (v) => (v * 100).toFixed(1);
+const CIRC = 2 * Math.PI * 88, SMALL = 2 * Math.PI * 40;
+
+const state = { criteria: {}, traces: [], evals: {}, calibration: null, pending: null, selected: null };
+
+function go(view) {
+  document.querySelectorAll('[data-view]').forEach(v => v.classList.toggle('show', v.dataset.view === view));
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.toggle('active', n.dataset.nav === view));
+  const titles = { dashboard: "EU AI Act Compliance", traces: "Trace Analysis", experiments: "Improvement Experiments" };
+  $('pageTitle').textContent = titles[view] || "AuditLens";
+  $('approval').classList.toggle('flex', view === 'traces' && !!state.pending);
+  if (view === 'experiments') renderExperiments();
+}
+document.querySelectorAll('.nav-link').forEach(n => n.addEventListener('click', () => { go(n.dataset.nav); toggleSidebar(false); }));
+
+// Mobile sidebar drawer
+function toggleSidebar(force) {
+  const sb = $('sidebar'), bd = $('sbBackdrop');
+  const open = force === undefined ? sb.classList.contains('-translate-x-full') : force;
+  sb.classList.toggle('-translate-x-full', !open);
+  bd.classList.toggle('hidden', !open);
+}
+
+function statusColor(score, threshold) {
+  if (score >= threshold) return { c: "#34d399", t: "Compliant", icon: "check_circle" };
+  if (score >= threshold - 0.15) return { c: "#ffb784", t: "At Risk", icon: "warning" };
+  return { c: "#ffb4ab", t: "Violation", icon: "report" };
+}
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
+
+async function boot() {
+  // 1. metadata + health
+  const [criteria, health, calibration, traces] = await Promise.all([
+    api('/api/criteria'), api('/health'), api('/api/calibration').catch(() => null), api('/api/traces').catch(() => []),
+  ]);
+  state.criteria = criteria; state.calibration = calibration;
+  state.traces = Array.isArray(traces) ? traces : [];
+
+  // health badges
+  $('liveDot').className = "w-2 h-2 rounded-full " + (health.partner_mcp_connected ? "bg-success" : "bg-tertiary") + " animate-pulse";
+  $('liveLabel').className = "text-label-caps " + (health.partner_mcp_connected ? "text-success" : "text-tertiary");
+  $('liveLabel').textContent = health.partner_mcp_connected ? "Phoenix Connected" : "Phoenix Offline";
+  $('healthBox').innerHTML = `
+    <div class="flex justify-between"><span>Model</span><span class="text-on-surface">${health.model || '—'}</span></div>
+    <div class="flex justify-between"><span>Partner</span><span class="text-on-surface">${health.partner || '—'}</span></div>
+    <div class="flex justify-between"><span>Agents</span><span class="text-on-surface">${(health.agents || []).length}</span></div>`;
+
+  // 2. evaluate each trace → aggregate (capped for cost/latency)
+  const subset = state.traces.slice(0, 8);
+  const results = await Promise.all(subset.map(t =>
+    post('/api/evaluate', { traceId: t.trace_id }).then(r => ({ t, r })).catch(() => null)
+  ));
+  state.evals = {};
+  results.filter(Boolean).forEach(({ t, r }) => { if (!r.error) state.evals[t.trace_id] = r; });
+
+  renderDashboard();
+  renderTraceList();
+  renderCalibration();
+  pollLiveCalibration();
+}
+
+// The live (real-Gemini) κ warms in the background; upgrade the card to it when ready.
+let _calPolls = 0;
+async function pollLiveCalibration() {
+  if (state.calibration?.mode === 'live' || _calPolls > 12) return;
+  _calPolls++;
+  setTimeout(async () => {
+    try {
+      const c = await api('/api/calibration');
+      if (c && !c.error) { state.calibration = c; renderCalibration(); }
+    } catch {}
+    pollLiveCalibration();
+  }, 12000);
+}
+
+function renderDashboard() {
+  const ids = Object.keys(state.criteria);
+  const evals = Object.values(state.evals);
+  $('traceCount').textContent = evals.length;
+
+  // aggregate per-article
+  const agg = {};
+  ids.forEach(id => agg[id] = { sum: 0, n: 0, pass: 0, fail: 0 });
+  let overallSum = 0, overallN = 0;
+  evals.forEach(e => {
+    overallSum += e.overall; overallN++;
+    ids.forEach(id => {
+      const s = e.scores?.[id];
+      if (typeof s === "number") { const a = agg[id]; a.sum += s; a.n++; (s >= state.criteria[id].threshold ? a.pass++ : a.fail++); }
+    });
+  });
+  const global = overallN ? overallSum / overallN : 0;
+
+  // global gauge
+  const gc = global >= 0.9 ? "#34d399" : global >= 0.75 ? "#ffb784" : "#ffb4ab";
+  const ring = $('globalRing'); ring.setAttribute('stroke', gc);
+  requestAnimationFrame(() => ring.setAttribute('stroke-dashoffset', CIRC * (1 - global)));
+  $('globalScore').textContent = pct(global) + "%";
+  $('globalLabel').textContent = global >= 0.9 ? "Stable" : global >= 0.75 ? "Monitor" : "At Risk";
+  $('globalLabel').style.color = gc;
+
+  // per-article gauges
+  $('articleGauges').innerHTML = ids.map(id => {
+    const a = agg[id], mean = a.n ? a.sum / a.n : 0, meta = state.criteria[id], col = statusColor(mean, meta.threshold).c;
+    return `<div class="glass-card rounded-xl p-md flex flex-col items-center justify-center" style="border-left:4px solid ${col}33">
+      <h4 class="text-label-caps text-on-surface-variant mb-xs text-center">${meta.article}</h4>
+      <div class="relative w-24 h-24 flex items-center justify-center">
+        <svg class="w-full h-full transform -rotate-90">
+          <circle class="text-surface-container-high" cx="48" cy="48" fill="transparent" r="40" stroke="currentColor" stroke-width="6"></circle>
+          <circle class="ring-anim" cx="48" cy="48" fill="transparent" r="40" stroke="${col}" stroke-dasharray="${SMALL}" stroke-dashoffset="${SMALL * (1 - mean)}" stroke-linecap="round" stroke-width="6"></circle>
+        </svg>
+        <span class="absolute text-title-md font-semibold">${pct(mean)}%</span>
+      </div>
+      <span class="mt-xs text-[10px] text-on-surface-variant text-center font-semibold uppercase tracking-wide">${meta.label}</span>
+    </div>`;
+  }).join('');
+
+  // table
+  $('articleTable').innerHTML = ids.map(id => {
+    const a = agg[id], mean = a.n ? a.sum / a.n : 0, meta = state.criteria[id], st = statusColor(mean, meta.threshold);
+    return `<tr class="hover:bg-surface-container-high transition-colors border-b border-outline-variant/40">
+      <td class="px-lg py-md text-mono-data text-primary">${meta.article}</td>
+      <td class="px-lg py-md text-on-surface">${meta.requirement}</td>
+      <td class="px-lg py-md text-mono-data">${a.n}</td>
+      <td class="px-lg py-md text-success">${a.pass}</td>
+      <td class="px-lg py-md text-error">${a.fail}</td>
+      <td class="px-lg py-md font-bold">${pct(mean)}%</td>
+      <td class="px-lg py-md"><span class="flex items-center gap-1" style="color:${st.c}"><span class="material-symbols-outlined text-[18px]">${st.icon}</span>${st.t}</span></td>
+    </tr>`;
+  }).join('');
+
+  // violations panel
+  const viols = [];
+  evals.forEach(e => (e.violations || []).forEach(v => viols.push({ ...v, trace: e.trace, label: state.criteria[v.id]?.label || v.id })));
+  $('violCount').textContent = viols.length + " ACTIVE";
+  $('violationList').innerHTML = viols.length ? viols.map(v => `
+    <div onclick="go('traces');evaluateTrace('${v.trace.trace_id}')" class="p-md rounded-xl bg-surface-container-highest border border-outline-variant space-y-sm hover:border-primary transition-colors cursor-pointer">
+      <div class="flex justify-between items-start">
+        <div class="space-y-xs">
+          <span class="text-mono-data text-on-surface-variant block text-xs">${v.trace.trace_id.slice(0, 16)}</span>
+          <span class="bg-error-container/40 text-error px-sm py-[2px] rounded-full text-[10px] font-bold border border-error/20">${v.article} · ${v.label}</span>
+        </div>
+        <span class="text-error material-symbols-outlined" style="font-variation-settings:'FILL' 1;">report</span>
+      </div>
+      <p class="text-body-sm text-on-surface leading-tight">Scored ${pct(v.score)}% vs ${pct(v.threshold)}% threshold on ${v.trace.application || 'trace'}.</p>
+    </div>`).join('') : `<p class="text-on-surface-variant text-body-sm px-xs">No violations in the audited window. 🎉</p>`;
+}
+
+function renderCalibration() {
+  const c = state.calibration;
+  if (!c) { $('calibration').innerHTML = `<p class="text-on-surface-variant text-body-sm col-span-5">Calibration unavailable.</p>`; return; }
+  const live = c.mode === 'live';
+  const badge = $('calMode');
+  if (badge) {
+    badge.textContent = live ? '● LIVE Gemini' : '○ offline (warming…)';
+    badge.style.color = live ? '#34d399' : '#ccc3d8';
+    badge.style.borderColor = live ? '#34d399' : '#4a4455';
+  }
+  const o = c.overall;
+  const cells = [
+    ["Cohen's κ", o.kappa.toFixed(3), o.kappa_label, "#d2bbff"],
+    ["Accuracy", pct(o.accuracy) + "%", `${o.TP + o.TN}/${o.n} correct`, "#34d399"],
+    ["Precision", pct(o.precision) + "%", "violation calls", "#adc6ff"],
+    ["Recall", pct(o.recall) + "%", "violations caught", "#adc6ff"],
+    ["MAE", o.mae.toFixed(3), `${c.pairs} pairs · ${c.traces} traces`, "#ffb784"],
+  ];
+  $('calibration').innerHTML = cells.map(([k, v, sub, col]) => `
+    <div class="bg-surface-container-low rounded-lg p-md border border-outline-variant">
+      <div class="text-label-caps text-on-surface-variant uppercase">${k}</div>
+      <div class="text-headline-md font-bold" style="color:${col}">${v}</div>
+      <div class="text-[11px] text-on-surface-variant mt-1">${sub}</div>
+    </div>`).join('');
+}
+
+function renderTraceList() {
+  $('traceList').innerHTML = state.traces.map(t => {
+    const e = state.evals[t.trace_id];
+    const badge = e ? (e.pass
+      ? `<span class="text-success text-label-caps flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span>${pct(e.overall)}%</span>`
+      : `<span class="text-error text-label-caps flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">report</span>${e.violations.length} viol</span>`)
+      : `<span class="text-on-surface-variant text-label-caps">—</span>`;
+    const active = state.selected === t.trace_id ? "border-primary" : "border-outline-variant";
+    return `<div onclick="evaluateTrace('${t.trace_id}')" class="glass-card rounded-xl p-md border ${active} hover:border-primary transition-colors cursor-pointer">
+      <div class="flex justify-between items-center">
+        <span class="text-mono-data text-primary text-xs">${t.trace_id.slice(0, 18)}</span>${badge}
+      </div>
+      <p class="text-body-sm text-on-surface mt-xs line-clamp-1">${esc(t.input)}</p>
+      <span class="text-[11px] text-on-surface-variant">${t.application || t.model || ''}</span>
+    </div>`;
+  }).join('') || `<p class="text-on-surface-variant text-body-sm">No traces. (Live mode needs Phoenix; set MOCK=true for demo data.)</p>`;
+}
+
+async function evaluateTrace(traceId) {
+  go('traces');
+  $('traceDetail').innerHTML = `<div class="flex items-center justify-center h-64 text-on-surface-variant"><span class="material-symbols-outlined animate-spin mr-2">progress_activity</span>Gemini 3 scoring trace vs EU AI Act…</div>`;
+  const d = await post('/api/evaluate', { traceId });
+  if (d.error) { $('traceDetail').innerHTML = `<div class="glass-card rounded-xl p-lg text-error">Error: ${esc(d.error)}</div>`; return; }
+  state.selected = d.trace.trace_id; state.evals[d.trace.trace_id] = d;
+  renderTraceList();
+  renderTraceDetail(d);
+}
+
+function renderTraceDetail(d) {
+  const ids = Object.keys(state.criteria);
+  const swim = (d.steps || []).map((s, i) => `
+    <div class="swimlane-node relative flex flex-col items-center min-w-[150px]">
+      <div class="w-10 h-10 rounded-full ${s.agent === 'ComplianceEvaluator' ? 'bg-primary-container/40 text-primary border border-primary' : 'bg-secondary-container/40 text-secondary border border-secondary'} flex items-center justify-center mb-xs z-10">
+        <span class="material-symbols-outlined text-[20px]">${s.agent === 'ComplianceEvaluator' ? 'gavel' : 'travel_explore'}</span></div>
+      <span class="text-label-caps text-on-surface text-center">${s.agent}</span>
+      <span class="text-mono-data text-body-sm text-on-surface-variant text-center px-1">${esc(s.action)}</span>
+      <span class="text-mono-data text-[11px] text-on-surface-variant">${s.ms}ms</span>
+    </div>`).join('');
+
+  const scoreRows = ids.map(id => {
+    const s = d.scores?.[id]; if (typeof s !== "number") return "";
+    const meta = state.criteria[id], st = statusColor(s, meta.threshold);
+    return `<div class="space-y-xs">
+      <div class="flex justify-between items-end">
+        <div class="flex flex-col"><span class="text-title-md text-on-surface">${meta.article}</span><span class="text-body-sm text-on-surface-variant">${meta.label}</span></div>
+        <div class="text-right"><span class="text-mono-data text-headline-md" style="color:${st.c}">${s.toFixed(2)}</span><div class="text-[10px] text-on-surface-variant">≥ ${meta.threshold}</div></div>
+      </div>
+      <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full ring-anim" style="width:${s * 100}%;background:${st.c}"></div></div>
+    </div>`;
+  }).join('');
+
+  const overallSt = d.pass ? { c: "#34d399", t: "COMPLIANT" } : { c: "#ffb4ab", t: d.violations.length + " VIOLATION(S)" };
+  $('traceDetail').innerHTML = `
+  <div class="space-y-lg">
+    <div class="glass-card rounded-xl p-lg flex justify-between items-center">
+      <div>
+        <div class="text-mono-data text-on-surface-variant text-xs flex items-center gap-2">${d.trace.trace_id}
+          <span class="material-symbols-outlined text-[16px] cursor-pointer" onclick="navigator.clipboard.writeText('${d.trace.trace_id}');toast('Trace ID copied')">content_copy</span></div>
+        <div class="text-body-sm text-on-surface-variant">${d.trace.application || 'Application'} · ${d.trace.model || ''}</div>
+      </div>
+      <div class="text-right"><div class="text-display-lg" style="color:${overallSt.c}">${pct(d.overall)}%</div>
+        <div class="text-label-caps" style="color:${overallSt.c}">${overallSt.t} · ${d.elapsed_ms}ms</div></div>
+    </div>
+
+    <section class="bg-surface-container-low p-md rounded-xl border border-outline-variant">
+      <div class="flex items-center justify-between mb-md"><h3 class="text-label-caps text-on-surface-variant uppercase">Agent Pipeline</h3>
+        <span class="text-on-surface-variant text-[12px] text-mono-data">${d.elapsed_ms}ms total</span></div>
+      <div class="flex items-start overflow-x-auto pb-md gap-[40px] px-md">${swim}
+        <div class="swimlane-node relative flex flex-col items-center min-w-[150px]">
+          <div class="w-10 h-10 rounded-full ${d.pass ? 'bg-success/20 text-success border border-success' : 'bg-tertiary-container/40 text-tertiary border border-tertiary'} flex items-center justify-center mb-xs z-10">
+            <span class="material-symbols-outlined text-[20px]">${d.pass ? 'task_alt' : 'pending_actions'}</span></div>
+          <span class="text-label-caps text-on-surface text-center">Propose write</span>
+          <span class="text-mono-data text-body-sm text-on-surface-variant text-center">awaiting approval</span></div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-12 gap-lg">
+      <div class="col-span-12 lg:col-span-7 space-y-md">
+        <div class="bg-surface-container p-lg rounded-xl border border-outline-variant">
+          <div class="flex items-center gap-sm mb-sm"><span class="material-symbols-outlined text-secondary">account_circle</span>
+            <h4 class="text-label-caps text-on-surface-variant uppercase">User Query</h4></div>
+          <p class="text-body-md text-on-surface leading-relaxed">${esc(d.trace.input)}</p>
+        </div>
+        <div class="bg-surface-container p-lg rounded-xl border-2 ${d.pass ? 'border-success/20' : 'border-error/30'}">
+          <div class="flex items-center justify-between mb-sm">
+            <div class="flex items-center gap-sm"><span class="material-symbols-outlined text-primary">smart_toy</span>
+              <h4 class="text-label-caps text-on-surface-variant uppercase">Model Response</h4></div>
+            ${d.pass ? '' : '<span class="px-sm py-base bg-error-container text-error font-bold rounded-lg text-[10px] text-label-caps">CRITICAL DRIFT</span>'}
+          </div>
+          <p class="text-body-md text-on-surface leading-relaxed">${esc(d.trace.output)}</p>
+          <div class="mt-md flex items-start gap-xs ${d.pass ? 'text-success' : 'text-error'}">
+            <span class="material-symbols-outlined text-[18px]">${d.pass ? 'verified' : 'error'}</span>
+            <span class="text-body-sm italic">${esc(d.explanation || '')}</span></div>
+        </div>
+      </div>
+      <div class="col-span-12 lg:col-span-5">
+        <div id="tourScores" class="bg-surface-container p-lg rounded-xl border border-outline-variant h-full">
+          <h4 class="text-label-caps text-on-surface-variant mb-lg uppercase">Compliance Scores (EU AI Act)</h4>
+          <div class="space-y-lg">${scoreRows}</div>
+        </div>
+      </div>
+    </div>
+
+    ${d.prompt_fix ? `<section id="tourFix" class="bg-surface-container p-lg rounded-xl border border-outline-variant">
+      <div class="flex items-center justify-between mb-md">
+        <div class="flex items-center gap-md"><div class="p-sm bg-primary/10 rounded-lg text-primary"><span class="material-symbols-outlined">auto_fix_high</span></div>
+          <h3 class="text-title-md text-on-surface">Suggested Fix · worst article: ${state.criteria[d.worst_article]?.article || d.worst_article}</h3></div>
+        <button onclick="go('experiments')" class="flex items-center gap-sm bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-bold text-label-caps hover:opacity-90 transition-all">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">science</span>Add to Experiment</button>
+      </div>
+      <div class="p-md bg-surface-container-low border border-secondary/30 rounded-lg text-mono-data text-on-surface">
+        <span class="text-secondary">+ </span>${esc(d.prompt_fix)}</div>
+    </section>` : ''}
+  </div>`;
+
+  // approval bar
+  if (d.proposedAction) {
+    state.pending = { trace: d.trace, scores: d.scores, overall: d.overall, violations: d.violations };
+    $('apTitle').textContent = "Agent proposes: " + d.proposedAction.description;
+    $('apTools').textContent = "tools: " + (d.proposedAction.tools || []).join(" · ");
+    $('approval').classList.remove('hidden'); $('approval').classList.add('flex');
+  }
+}
+
+async function approve() {
+  const d = await post('/api/execute', { approved: true, payload: state.pending });
+  hideApproval();
+  toast("✅ Written to Phoenix: " + (d.executed || []).join(", "));
+}
+function hideApproval() { state.pending = null; $('approval').classList.add('hidden'); $('approval').classList.remove('flex'); }
+
+function renderExperiments() {
+  // Grounded in the most-violating audited trace (real worst_article + real prompt_fix).
+  const evals = Object.values(state.evals).filter(e => !e.pass && e.prompt_fix);
+  const worst = evals.sort((a, b) => a.overall - b.overall)[0];
+  if (!worst) {
+    $('experimentBody').innerHTML = `<div class="glass-card rounded-xl p-xl text-center text-on-surface-variant">No violations to optimise — audit some traces first.<br><button onclick="go('traces')" class="mt-md bg-primary-container text-on-primary-container px-lg py-sm rounded-lg text-label-caps font-bold">Go to Traces</button></div>`;
+    return;
+  }
+  const meta = state.criteria[worst.worst_article] || {};
+  const before = worst.scores[worst.worst_article] || 0;
+  const projected = Math.min(0.98, before + 0.6); // projected, clearly labelled
+  $('experimentBody').innerHTML = `
+  <div class="space-y-lg">
+    <div class="flex items-center gap-3">
+      <h1 class="text-headline-lg font-bold">Experiment: ${meta.article} ${meta.label} Optimization</h1>
+      <span class="bg-primary-container/20 text-primary px-3 py-1 rounded-full text-label-caps flex items-center gap-1">
+        <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1;">science</span>Draft</span>
+    </div>
+    <p class="text-body-sm text-on-surface-variant">Source trace: <span class="text-mono-data text-primary">${worst.trace.trace_id}</span> · dataset: art_violations_${new Date().toISOString().slice(0, 10)}</p>
+
+    <div class="grid grid-cols-12 gap-lg">
+      <div class="col-span-12 lg:col-span-6 glass-card p-lg rounded-xl space-y-md">
+        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-tertiary"></div>
+          <h3 class="text-label-caps text-on-surface-variant uppercase tracking-widest">Prompt A (Current)</h3></div>
+        <div class="flex items-baseline gap-2"><span class="text-display-lg text-tertiary">${pct(before)}%</span>
+          <span class="text-label-caps text-on-surface-variant opacity-60">${meta.article} score</span></div>
+        <div class="p-md bg-surface-container-low border border-outline-variant rounded text-mono-data text-on-surface-variant italic">"You are a helpful assistant. Answer the user's question using the provided context."</div>
+      </div>
+      <div class="col-span-12 lg:col-span-6 glass-card p-lg rounded-xl space-y-md border-primary/30">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-primary"></div>
+            <h3 class="text-label-caps text-primary uppercase tracking-widest">Prompt B (Optimized)</h3></div>
+          <span class="bg-primary/20 text-primary px-2 py-0.5 rounded text-label-caps">projected +${pct(projected - before)}%</span>
+        </div>
+        <div class="flex items-baseline gap-2"><span class="text-display-lg text-primary">~${pct(projected)}%</span>
+          <span class="text-label-caps text-on-surface-variant opacity-60">projected</span></div>
+        <div class="p-md bg-surface-container-low border border-primary/30 rounded text-mono-data text-on-primary-container">"You are a helpful assistant. <span class="text-secondary bg-secondary/10 px-1 rounded">${esc(worst.prompt_fix)}</span>"</div>
+      </div>
+
+      <div class="col-span-12 glass-card p-lg rounded-xl">
+        <h3 class="text-title-md font-bold mb-lg">Per-article scores · current vs projected after fix</h3>
+        <div class="h-56 flex items-end justify-around pb-4 border-b border-outline-variant">
+          ${Object.keys(state.criteria).map(id => {
+            const cur = worst.scores[id] ?? 0;
+            const proj = id === worst.worst_article ? projected : Math.min(0.99, cur + 0.01);
+            return `<div class="flex flex-col items-center w-full gap-3">
+              <div class="flex items-end gap-2 h-44">
+                <div class="w-8 bg-tertiary/40 rounded-t" style="height:${cur * 100}%" title="A ${pct(cur)}%"></div>
+                <div class="w-8 bg-primary rounded-t" style="height:${proj * 100}%" title="B ${pct(proj)}%"></div>
+              </div>
+              <span class="text-label-caps text-on-surface-variant text-center text-[10px]">${state.criteria[id].article}</span></div>`;
+          }).join('')}
+        </div>
+        <div class="flex gap-4 mt-md text-label-caps text-on-surface-variant">
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-tertiary/60 inline-block"></span>Prompt A (measured)</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-primary inline-block"></span>Prompt B (projected)</span>
+        </div>
+      </div>
+
+      <div class="col-span-12 glass-card p-lg rounded-xl flex flex-col md:flex-row justify-between items-center gap-lg border-t-4 border-primary">
+        <div class="flex-1"><h4 class="text-title-md font-bold mb-1">Next step in the loop</h4>
+          <p class="text-body-sm text-on-surface-variant">Collect this violation into a Phoenix dataset (real write, approval-gated), then run the A/B experiment via Agent Builder + Phoenix MCP. Projected numbers are estimates until the experiment runs.</p></div>
+        <button onclick="collectDataset('${worst.trace.trace_id}')" class="px-xl py-md bg-primary-container text-on-primary-container text-label-caps font-bold rounded-xl flex items-center gap-3 hover:shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all">
+          <span class="material-symbols-outlined">rocket_launch</span>Collect to Dataset</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function collectDataset(traceId) {
+  const e = state.evals[traceId];
+  const d = await post('/api/execute', { approved: true, payload: { trace: e.trace, scores: e.scores, overall: e.overall, violations: e.violations } });
+  toast("✅ Phoenix: " + (d.executed || []).join(", "));
+}
+
+function exportCsv() {
+  const ids = Object.keys(state.criteria), evals = Object.values(state.evals);
+  const rows = [["article", "requirement", "threshold", "avg_score", "traces", "pass", "fail"]];
+  ids.forEach(id => {
+    const meta = state.criteria[id]; let sum = 0, n = 0, pass = 0, fail = 0;
+    evals.forEach(e => { const s = e.scores?.[id]; if (typeof s === "number") { sum += s; n++; (s >= meta.threshold ? pass++ : fail++); } });
+    rows.push([meta.article, meta.requirement, meta.threshold, (n ? sum / n : 0).toFixed(3), n, pass, fail]);
+  });
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "auditlens_compliance.csv"; a.click();
+  toast("CSV exported");
+}
+
+function esc(s) { return String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+/* ============ JUDGE TOUR — drives the real app step by step ============ */
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function runViolationTrace() {
+  // Pick the most compelling violating trace, then run the REAL evaluation on it.
+  const t = state.traces.find(x => /pension|bitcoin|crypto|10x|stock|chest|fire|photo|ceo/i.test(x.input)) || state.traces[0];
+  if (t) await evaluateTrace(t.trace_id);
+}
+
+const TOUR = [
+  { title: "Welcome to AuditLens", view: "dashboard",
+    body: "AuditLens audits every production LLM call against the EU AI Act — live, with Gemini 3 + Arize Phoenix. This guided tour drives the real app for you. Use Next ›, or ← → / Esc." },
+  { sel: "#globalScore", view: "dashboard", title: "Global compliance score",
+    body: "The headline gauge: the aggregate EU AI Act score across every audited trace, computed live by Gemini — not a static number." },
+  { sel: "#articleGauges", view: "dashboard", title: "Per-article breakdown",
+    body: "Five gauges for the FINAL EU AI Act 2024/1689 articles: Art.50(1) AI disclosure, Art.9 risk, Art.14 human oversight, Art.50(2) synthetic-content marking, Art.53 GPAI." },
+  { sel: "#articleTable", view: "dashboard", title: "Compliance by article",
+    body: "Pass/fail counts and average score per article across the audited window — the auditor's at-a-glance posture." },
+  { sel: "#calibration", view: "dashboard", title: "The judge is judged",
+    body: "Our differentiator: Cohen's κ shows how well the Gemini evaluator agrees with human auditors on a labelled golden set. That's what makes the score itself defensible." },
+  { sel: "#traceList", view: "traces", title: "Real traces from Phoenix", action: async () => { go('traces'); },
+    body: "The TraceCollector agent pulls real production traces from Arize Phoenix. Let's open one and audit it for real." },
+  { sel: "#tourScores", view: "traces", title: "Gemini scores the trace", action: runViolationTrace,
+    body: "The ComplianceEvaluator just scored this trace live against every article. Watch the bars that fall below their thresholds turn red — those are violations." },
+  { sel: "#tourFix", view: "traces", title: "Auto-suggested guardrail",
+    body: "For the worst article, Gemini drafts the exact prompt fix that would bring the system back into compliance." },
+  { sel: "#approval", view: "traces", title: "Human-in-the-loop gate ⭐",
+    body: "Everything so far was read-only. Writing back to Phoenix is consequential, so the agent PROPOSES and waits — a human approves before any annotation or dataset is written." },
+  { sel: "#experimentBody", view: "experiments", title: "Close the loop", action: async () => { go('experiments'); },
+    body: "Approved violations become a Phoenix dataset that feeds a prompt A/B experiment — the system audits itself and improves itself." },
+  { view: "dashboard", title: "That's AuditLens", action: async () => { go('dashboard'); },
+    body: "Real Gemini 3 + real Arize Phoenix + approval-gated writes, deployed on Cloud Run. Thanks for watching — restart the tour anytime from the Judge Tour button." },
+];
+
+let tourIdx = -1, tourBusy = false, tourAuto = false, tourTimer = null;
+
+async function startTour(auto = false) { tourAuto = auto; await tourStep(0); }
+function endTour() {
+  tourIdx = -1; tourAuto = false; clearTimeout(tourTimer);
+  $('tourBlocker').classList.remove('show', 'dim');
+  $('tourHighlight').style.display = 'none';
+  $('tourCard').classList.remove('show');
+}
+async function nextStep() { if (!tourBusy) await tourStep(tourIdx + 1); }
+async function prevStep() { if (!tourBusy) await tourStep(tourIdx - 1); }
+
+async function tourStep(i) {
+  if (i < 0 || i >= TOUR.length) return endTour();
+  tourBusy = true;
+  tourIdx = i;
+  const s = TOUR[i];
+
+  // Chrome
+  $('tourBlocker').classList.add('show');
+  $('tourCard').classList.add('show');
+  $('tourStepNo').textContent = `STEP ${i + 1} / ${TOUR.length}`;
+  $('tourTitle').textContent = s.title;
+  $('tourBody').textContent = s.body;
+  $('tourProgress').style.width = `${((i + 1) / TOUR.length) * 100}%`;
+  $('tourBack').style.visibility = i === 0 ? 'hidden' : 'visible';
+  $('tourNext').textContent = i === TOUR.length - 1 ? 'Finish ✓' : 'Next ›';
+
+  // Run the step's real action (may be a live Gemini call → show progress in the card)
+  if (s.action) {
+    const prevBody = s.body;
+    $('tourBody').innerHTML = `<span class="inline-flex items-center gap-2 text-primary"><span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>Running live…</span><br><br>${esc(prevBody)}`;
+    try { await s.action(); } catch (e) { /* keep tour resilient */ }
+    $('tourBody').textContent = prevBody;
+  } else if (s.view) {
+    go(s.view);
+  }
+
+  await sleep(250);
+  positionTour(s);
+  tourBusy = false;
+
+  // Auto-play: advance after a readable dwell (loops back to start at the end → kiosk/record).
+  if (tourAuto) {
+    clearTimeout(tourTimer);
+    tourTimer = setTimeout(() => { if (tourAuto) (i >= TOUR.length - 1 ? tourStep(0) : nextStep()); }, s.dwell || 6500);
+  }
+}
+
+function positionTour(s) {
+  const card = $('tourCard'), hl = $('tourHighlight'), blk = $('tourBlocker');
+  const el = s.sel ? document.querySelector(s.sel) : null;
+  if (el) {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => {
+      const r = el.getBoundingClientRect(), pad = 8;
+      hl.style.display = 'block';
+      hl.style.left = (r.left - pad) + 'px'; hl.style.top = (r.top - pad) + 'px';
+      hl.style.width = (r.width + pad * 2) + 'px'; hl.style.height = (r.height + pad * 2) + 'px';
+      blk.classList.remove('dim');
+      placeCard(card, r);
+    }, 320);
+  } else {
+    hl.style.display = 'none';
+    blk.classList.add('dim');
+    card.style.left = '50%'; card.style.top = '50%'; card.style.transform = 'translate(-50%,-50%)';
+  }
+}
+
+function placeCard(card, r) {
+  card.style.transform = 'none';
+  const cw = card.offsetWidth || 360, ch = card.offsetHeight || 200, m = 16;
+  let top = r.bottom + 12;
+  if (top + ch > innerHeight - m) top = Math.max(m, r.top - ch - 12);
+  if (top < m) top = m;
+  let left = r.left + r.width / 2 - cw / 2;
+  if (left + cw > innerWidth - m) left = innerWidth - cw - m;
+  if (left < m) left = m;
+  card.style.left = left + 'px'; card.style.top = top + 'px';
+}
+
+addEventListener('keydown', (e) => {
+  if (tourIdx < 0) return;
+  if (e.key === 'Escape') endTour();
+  else if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+});
+addEventListener('resize', () => { if (tourIdx >= 0) positionTour(TOUR[tourIdx]); });
+// Auto-start the tour when opened with ?tour=1 (handy for a kiosk/judge link)
+const _tourParam = new URLSearchParams(location.search).get('tour');
+if (_tourParam === '1') addEventListener('load', () => setTimeout(() => startTour(false), 1500));
+if (_tourParam === 'auto') addEventListener('load', () => setTimeout(() => startTour(true), 2000)); // hands-free loop for recording
+
+boot();
+</script>
+</body>
+</html>

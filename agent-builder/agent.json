@@ -1,0 +1,22 @@
+{
+  "_comment": "Google Cloud Agent Builder definition for the JUDGED AuditLens agent: Gemini 2.5 Pro + Arize Phoenix MCP server. Import via the Agent Builder console or gcloud (see README). The Express app in src/ mirrors this for the hosted demo UI. Swap model to gemini-3 once it is available on your Vertex project.",
+  "displayName": "AuditLens",
+  "model": "gemini-2.5-pro",
+  "description": "EU AI Act compliance monitor: pulls production LLM traces from Arize Phoenix, scores each against EU AI Act articles (Art.50/9/14/53, Regulation (EU) 2024/1689), and proposes writing annotations + building a violations dataset + running a prompt-improvement experiment, gated on human approval.",
+  "instruction": "You are AuditLens. (1) Use the phoenix tool `get-spans` (project_identifier) to fetch recent spans for the project and treat each trace's root span as the user turn; (2) for each trace, score the response 0..1 against the EU AI Act rubric (Art.50(1) AI-interaction disclosure, Art.9 operational scope, Art.14 human-oversight flagging, Art.50(2) synthetic-content marking, Art.53 GPAI provider transparency); (3) mark a trace as a violation when a score is below its article threshold; (4) for the worst article, propose a concrete prompt fix via `upsert-prompt`; (5) do NOT add dataset examples or deploy a prompt until the human approves — present the findings and the proposed prompt change and wait. Article numbers follow Regulation (EU) 2024/1689; verify paragraphs against the consolidated text.",
+  "tools": [
+    {
+      "type": "mcp",
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@arizeai/phoenix-mcp@latest", "--baseUrl", "${PHOENIX_BASE_URL}", "--apiKey", "${PHOENIX_API_KEY}"]
+      },
+      "_comment": "Tool names verified against @arizeai/phoenix-mcp. Reads: list-projects/list-traces/get-spans/get-trace. Writes/experiment: add-dataset-examples/upsert-prompt/list-experiments-for-dataset. (The MCP has no create_annotation tool; the hosted app writes annotations via Phoenix REST.)",
+      "exposedTools": ["list-projects", "list-traces", "get-spans", "get-trace", "add-dataset-examples", "upsert-prompt", "list-experiments-for-dataset"]
+    }
+  ],
+  "humanInTheLoop": {
+    "requireApprovalFor": ["add-dataset-examples", "upsert-prompt"],
+    "_comment": "Consequential writes / prompt deploys pause for human approval — maps to the UI ApprovalBar and the 'keep you in control' rule."
+  }
+}
