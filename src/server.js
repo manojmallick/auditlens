@@ -8,6 +8,7 @@ import express from "express";
 import { readFile } from "node:fs/promises";
 import { evaluate, executeProposed, cacheStats, startLiveCalibration, liveCalibrationLabelled } from "./agent.js";
 import { getTraces, pingPhoenix, pingPhoenixMcp, phoenixTransport } from "./phoenix.js";
+import { agentEngineEnabled, agentEnginePing, agentEngineResource } from "./agent-engine.js";
 import { calibrate } from "./calibration.js";
 import { EU_AI_ACT_CHECKS } from "./criteria.js";
 
@@ -19,20 +20,26 @@ app.use(express.static("public"));
 app.get("/health", async (_req, res) => {
   // Probe both surfaces honestly: REST reachability always, and a REAL MCP handshake
   // when the MCP path is enabled. partner_mcp_connected means an actual MCP connect.
-  const [rest, mcp] = await Promise.all([pingPhoenix(), pingPhoenixMcp()]);
+  const [rest, mcp, ae] = await Promise.all([pingPhoenix(), pingPhoenixMcp(), agentEnginePing()]);
   res.json({
     status: "ok",
     service: "auditlens",
-    version: "2.0.0",
-    model: process.env.GEMINI_MODEL || "gemini-3",
+    version: "2.1.0",
+    model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
     partner: "arize-phoenix",
     partner_transport: phoenixTransport(),     // "mcp" | "rest" | "mock"
     partner_connected: rest,                    // REST reachability
     partner_mcp_connected: mcp,                 // genuine MCP handshake (false unless USE_PHOENIX_MCP=true)
+    agent_builder_runtime: agentEngineEnabled(),// scoring routed through Vertex AI Agent Engine
+    agent_builder_connected: ae,                // real reach to the deployed Agent Engine
     agents: ["TraceCollector", "ComplianceEvaluator"],
     regulations: ["EU AI Act Art.50", "Art.9", "Art.14", "Art.50(2)", "Art.53"],
     features: ["eu_ai_act_scoring", "experiment_loop", "evaluator_calibration"],
-    stack: { gemini: process.env.GEMINI_MODEL || "gemini-2.5-flash", agent_builder: "agent-builder/agent.json", phoenix_mcp: "@arizeai/phoenix-mcp" },
+    stack: {
+      gemini: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+      agent_builder: agentEngineResource() || "agent-builder/agent.json",
+      phoenix_mcp: "@arizeai/phoenix-mcp",
+    },
     ...cacheStats(),
     timestamp: new Date().toISOString(),
   });

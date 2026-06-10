@@ -40,8 +40,8 @@ gcloud run deploy auditlens --source . --region=europe-west1 --allow-unauthentic
 until then it falls back to the offline synthetic numbers so the demo always runs.
 
 **Stack (Google Cloud Rapid Agent Hackathon — Arize bucket):**
-- 🧠 **Gemini 3** — EU AI Act rubric scoring *(required)* — `@google/genai`, called at runtime
-- 🏗️ **Google Cloud Agent Builder** — agent definition in [`agent-builder/agent.json`](agent-builder/agent.json) *(required)*
+- 🧠 **Gemini** — EU AI Act rubric scoring *(required)* — Gemini 3 (`gemini-3-flash-preview`) on the direct fallback path; Gemini 2.5 inside the Agent Engine agent. Called at runtime.
+- 🏗️ **Google Cloud Agent Builder** — a real **Vertex AI Agent Engine** agent built with the **ADK** ([`agent-engine/deploy.py`](agent-engine/deploy.py)). The hosted app's scoring step **calls it at runtime** ([`src/agent-engine.js`](src/agent-engine.js)); `/health` reports `agent_builder_runtime:true` + `agent_builder_connected:true`. *(required)*
 - 🔭 **Arize Phoenix via the Phoenix MCP server** — `@arizeai/phoenix-mcp`, **spawned and called at runtime** when `USE_PHOENIX_MCP=true` (reads via `get-spans`, dataset write via `add-dataset-examples`); falls back to Phoenix REST on error *(required)*
 - ☁️ Cloud Run (hosting)
 

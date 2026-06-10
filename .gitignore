@@ -5,3 +5,5 @@ node_modules/
 .personal/
 .claude/
 evals/scored.json
+.venv/
+agent-engine/.engine_resource

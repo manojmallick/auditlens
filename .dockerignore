@@ -11,3 +11,5 @@ evals/scored.json
 evals/calibration.json
 README.md
 seed_demo.py
+.venv
+agent-engine

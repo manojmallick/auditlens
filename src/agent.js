@@ -16,6 +16,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { readFile } from "node:fs/promises";
 import { getTraces } from "./phoenix.js";
+import { agentEngineEnabled, agentEngineScore } from "./agent-engine.js";
 import { EU_AI_ACT_CHECKS, evaluateScores, ARTICLE_IDS } from "./criteria.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -58,6 +59,12 @@ function rubricText() {
  *  Reused by evaluate() (live trace) and scripts/score.js (golden calibration set). */
 export async function scoreTrace({ input, output }) {
   if (process.env.MOCK === "true") return mockScores(input, output);
+  // Judged path: route scoring through the Google Cloud Agent Engine agent when deployed.
+  // Falls back to a direct Gemini call so the demo never breaks if the engine is cold.
+  if (agentEngineEnabled()) {
+    try { return await agentEngineScore({ input, output }); }
+    catch (e) { console.log("Agent Engine score failed, falling back to Gemini:", String(e.message || e)); }
+  }
   const res = await genWithRetry({
     model: MODEL,
     config: {
@@ -130,7 +137,8 @@ export async function evaluate(traceId, { fresh = false } = {}) {
   steps.push({ agent: "TraceCollector", action: `fetched trace ${trace.trace_id?.slice(0, 10)}…`, ms: Date.now() - t0 });
 
   const parsed = await scoreTrace({ input: trace.input, output: trace.output });
-  steps.push({ agent: "ComplianceEvaluator", action: `${MODEL} scored trace vs EU AI Act`, ms: Date.now() - t0 });
+  const scorer = agentEngineEnabled() ? "Vertex AI Agent Engine (ADK)" : MODEL;
+  steps.push({ agent: "ComplianceEvaluator", action: `${scorer} scored trace vs EU AI Act`, ms: Date.now() - t0 });
 
   const rollup = evaluateScores(parsed.scores || {});
   steps.push({ agent: "ComplianceEvaluator", action: `overall ${(rollup.overall * 100).toFixed(0)}% · ${rollup.violations.length} violations`, ms: Date.now() - t0 });

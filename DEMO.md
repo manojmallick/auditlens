@@ -61,14 +61,21 @@ Click **Experiments**.
 ---
 
 ## Required-tech architecture — what's live vs the judged agent (say this verbatim)
-> "There are two surfaces, and **both call the partner MCP at runtime**. The **judged agent** is defined in [`agent-builder/agent.json`](agent-builder/agent.json) — a **Google Cloud Agent Builder** agent on **Gemini 3** whose tool is the **Arize Phoenix MCP server** (`@arizeai/phoenix-mcp`), with the dataset/prompt writes gated behind human approval. The **hosted dashboard** you're using runs that same agent loop as a single Cloud Run service — and with `USE_PHOENIX_MCP=true` it **spawns the same `@arizeai/phoenix-mcp` server and calls `get-spans` / `add-dataset-examples` over MCP** (REST is only a fallback). Same agents, same approval gate, same Gemini 3 rubric, same partner MCP."
+> "Every required technology is called at runtime — not just named. The compliance scoring step calls a **Google Cloud Agent Builder** agent: a **Vertex AI Agent Engine** deployment built with the **ADK** (`agent-engine/deploy.py`), invoked over its REST endpoint by `src/agent-engine.js`. That agent runs **Gemini** on Vertex. And the trace data flows through the **Arize Phoenix MCP server** (`@arizeai/phoenix-mcp`), which the app spawns and calls (`get-spans`, `add-dataset-examples`) at runtime. Writes are gated behind human approval. `curl /health` shows `agent_builder_runtime:true`, `partner_transport:"mcp"`, and the Agent Engine resource name — all three, live."
 
 The `/health` endpoint proves it from a real MCP handshake:
 ```bash
 curl <url>/health   # → partner_transport:"mcp", partner_mcp_connected:true,
                     #   stack:{ gemini:"gemini-3-flash-preview", agent_builder:"agent-builder/agent.json", phoenix_mcp:"@arizeai/phoenix-mcp" }
 ```
-**Required boxes:** ✅ Gemini 3 (`gemini-3-flash-preview`, live) · ✅ Google Cloud (Cloud Run + Secret Manager + the Agent Builder def) · ✅ Arize Phoenix **via the Phoenix MCP server, called at runtime** (real reads over MCP; dataset write over MCP, gated).
+**Required boxes — all three invoked at runtime (verify in one curl):**
+```bash
+curl <url>/health
+# agent_builder_runtime:true, agent_builder_connected:true   → Vertex AI Agent Engine (ADK)
+# partner_transport:"mcp", partner_mcp_connected:true         → Arize Phoenix MCP server
+# model:"gemini-3-flash-preview"                              → Gemini
+```
+✅ **Google Cloud Agent Builder** — scoring is routed to a deployed **Vertex AI Agent Engine** agent (`agent-engine/deploy.py`), called at runtime by `src/agent-engine.js`. ✅ **Gemini** — runs inside that agent (Vertex) and on the direct fallback (Gemini 3). ✅ **Arize Phoenix** — reads + dataset write over the **Phoenix MCP server**. No competing AI/cloud.
 
 ## Proof points to drop in Q&A
 - **It's real, not mocked:** `curl <url>/health` → `partner_mcp_connected: true`, `model: gemini-3-flash-preview`. Traces come from a real Phoenix project; scoring is a real Gemini 3 call.
