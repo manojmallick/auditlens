@@ -176,7 +176,7 @@
             <span id="calMode" class="ml-auto text-label-caps px-sm py-xs rounded-full border border-outline-variant text-on-surface-variant"></span>
           </div>
           <div id="calibration" class="grid grid-cols-2 md:grid-cols-5 gap-lg"></div>
-          <p class="mt-md text-body-sm text-on-surface-variant">Cohen's κ measures <strong>live</strong> agreement between the Gemini 3 evaluator and human auditors on a pilot golden set (8 traces, 40 article-judgements). A production rollout expands this set and tunes the evaluator until κ clears the “substantial” bar — <em>measuring the judge is the point</em>. (Tuning the rubric anchors already lifted κ from 0.24 → 0.38 and made Art.50(2) perfect.)</p>
+          <p class="mt-md text-body-sm text-on-surface-variant">Cohen's κ measures <strong>live</strong> agreement between the Gemini evaluator and human auditors on a labelled golden set (20 traces, 100 article-judgements). We treat the judge like any model: measure it, then improve it. Expanding the set + tuning the rubric anchors moved κ from 0.24 (fair) to <strong>0.64 — “substantial” agreement</strong> — the conventional bar for a trustworthy evaluator. <em>Measuring the judge is the point.</em></p>
         </section>
       </div>
 
