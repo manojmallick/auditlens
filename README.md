@@ -1,5 +1,24 @@
 # AuditLens — EU AI Act Trace Compliance Agent
 
+<p>
+  <a href="https://auditlens-908307939543.europe-west1.run.app"><img alt="Live demo" src="https://img.shields.io/badge/▶_Live_demo-Cloud_Run-34d399?style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-d2bbff?style=for-the-badge"></a>
+</p>
+
+<p>
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-3_·_2.5-8E75FF?logo=googlegemini&logoColor=white">
+  <img alt="Vertex AI Agent Engine" src="https://img.shields.io/badge/Google_Cloud-Agent_Builder_(Agent_Engine)-4285F4?logo=googlecloud&logoColor=white">
+  <img alt="Arize Phoenix MCP" src="https://img.shields.io/badge/Arize_Phoenix-MCP_server-adc6ff?logo=arize&logoColor=white">
+  <img alt="Cloud Run" src="https://img.shields.io/badge/Cloud_Run-deployed-34d399?logo=googlecloud&logoColor=white">
+  <img alt="MCP" src="https://img.shields.io/badge/Model_Context_Protocol-runtime-7c3aed">
+  <img alt="Node" src="https://img.shields.io/badge/Node-%E2%89%A520-339933?logo=nodedotjs&logoColor=white">
+</p>
+
+> **🌐 Live:** https://auditlens-908307939543.europe-west1.run.app · click **Judge Tour** (or append `?tour=auto`) for a 90-second self-driving walkthrough.
+> **📚 Docs:** [Architecture](ARCHITECTURE.md) · [Design system](DESIGN_SYSTEM.md) · [Demo runbook](DEMO.md) · [Pitch deck](DECK.md) ([PDF](DECK.pdf))
+
+![AuditLens architecture](architecture.png)
+
 Phoenix traces every LLM call → AuditLens scores each trace against the EU AI Act
 (Art.50 transparency / AI-disclosure & synthetic-content marking, Art.9 scope, Art.14
 human oversight, Art.53 GPAI) with Gemini 3 → and, **with your approval**, writes the
