@@ -107,6 +107,43 @@ Drop these as text overlays at the matching beats:
 
 ---
 
+## YouTube title + description (copy-paste)
+
+**Title** (≤100 chars — pick one)
+```
+AuditLens — EU AI Act Compliance Agent | Gemini + Agent Builder + Arize Phoenix MCP
+```
+*Alt:* `AuditLens: an AI agent that audits LLMs for EU AI Act compliance (Gemini + Arize Phoenix)`
+
+**Description**
+```
+AuditLens turns EU AI Act compliance from a quarterly, 3-day manual review into a daily, automated audit.
+
+It pulls real production LLM traces from Arize Phoenix, scores each against the EU AI Act (Art.50/9/14/53) with Gemini running on a Vertex AI Agent Engine agent, and — with human approval — writes the verdict back to Phoenix over the Model Context Protocol. It even measures its own judge live with Cohen's κ ("eval the evals").
+
+Built for the Google Cloud Rapid Agent Hackathon — Arize track.
+
+🌐 Live demo: https://auditlens-908307939543.europe-west1.run.app
+💻 Code (MIT): https://github.com/manojmallick/auditlens
+
+⏱ Chapters
+0:00 The EU AI Act problem
+0:15 The live compliance dashboard
+0:35 We measure our own judge (live calibration, Cohen's κ)
+0:52 The agent + the human-in-the-loop approval gate
+1:28 The self-improvement loop (prompt A/B)
+1:45 All three required techs at runtime (curl /health)
+2:05 Try it yourself
+
+🛠 Built with
+Gemini · Google Cloud Agent Builder (Vertex AI Agent Engine + ADK) · Arize Phoenix via the Phoenix MCP server · Cloud Run · Cloud Build · Secret Manager · Vertex AI · Node.js / Express
+
+#GoogleCloud #Gemini #AIAgents #EUAIAct #AICompliance #Arize #Phoenix #MCP #VertexAI #Hackathon
+```
+*Set visibility to **Public**. Adjust the chapter timestamps to match your final cut (keep 0:00 first).*
+
+---
+
 ### Fast path (≈90s, minimal effort)
 If you're short on time: open **`…/?tour=auto`**, hit record, and read this over the auto-advancing
 tour: *"AuditLens audits production LLM traces against the EU AI Act with Gemini, on Google Cloud
