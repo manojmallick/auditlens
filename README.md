@@ -99,6 +99,46 @@ npm run dev              # http://localhost:8080 → Evaluate (blank = latest tr
 Need traces to evaluate? Instrument any app with OpenInference and point it at your
 Phoenix, or run Phoenix locally: `pip install arize-phoenix && phoenix serve`.
 
+## Configuration
+
+Copy `.env.example` to `.env` (the npm scripts load it automatically).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `GEMINI_API_KEY` | none | Use the Gemini Developer API. Not in `.env.example`; needed when the model is only on AI Studio (see Deploy) |
+| `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` | none, `europe-west1` | Vertex AI project and region (uses `gcloud auth application-default login`) |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `true` | `false` forces the Gemini Developer API |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | `gemini-2.5-pro` for deeper rigour; the deploy example uses `gemini-3-flash-preview` |
+| `PHOENIX_BASE_URL` | none | Your Arize Phoenix URL, e.g. `https://app.phoenix.arize.com/s/<space>` |
+| `PHOENIX_API_KEY` | none | Phoenix API key |
+| `PHOENIX_PROJECT` | `default` | Phoenix project holding the traces; it must exist (`GET /v1/projects`) |
+| `USE_PHOENIX_MCP` | `true` | Read traces and write the dataset through the Phoenix MCP server; falls back to Phoenix REST on error. Unset for REST only |
+| `AGENT_ENGINE_RESOURCE` | none | Route the EU AI Act scoring step to a deployed Vertex AI Agent Engine (`projects/.../reasoningEngines/ID`) |
+| `MOCK` | off | `true` runs the whole UI with canned data and no credentials |
+| `PREWARM` | on | `false` skips pre-computing evaluations at start-up |
+| `PORT` | `8080` | HTTP port |
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Server with auto-restart on `http://localhost:8080` |
+| `npm start` | Server |
+| `npm run score` | Score the human-labelled golden set with the real Gemini evaluator and write `evals/scored.json` (needs credentials) |
+| `npm run calibrate` | Compare evaluator scores with the human labels (Cohen's kappa) and write `evals/calibration.json`. Works offline from recorded scores; `KAPPA_TARGET` (default `0.6`) is the pass mark |
+| `npm run seed` | `python3 seed_demo.py`: load demo traces into Phoenix |
+
+## API
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/health` | GET | Service and dependency check |
+| `/api/traces` | GET | Traces available to evaluate |
+| `/api/criteria` | GET | The EU AI Act criteria used |
+| `/api/evaluate` | POST | Score a trace. Body `{ "traceId": "...", "fresh": false }`; omit `traceId` for the latest trace, `fresh: true` bypasses the cache |
+| `/api/execute` | POST | After human approval, write the annotations and dataset to Phoenix. Body `{ "approved": true, "payload": ... }`; without `approved: true` it returns `403` |
+| `/api/calibration` | GET | Evaluator agreement with human auditors |
+
 ## Deploy to Cloud Run
 ```bash
 # Secrets in Secret Manager (once):
